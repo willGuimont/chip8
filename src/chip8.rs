@@ -7,14 +7,14 @@ const START_PROGRAM_SPACE: usize = 0x200;
 
 const STACK_SIZE: usize = 16;
 
-const NUMBER_OF_KEYS: usize = 16;
-const KEY_PRESSED: u8 = 0xFF;
-const KEY_NOT_PRESSED: u8 = 0x00;
+pub const NUMBER_OF_KEYS: usize = 16;
+pub const KEY_PRESSED: u8 = 0xFF;
+pub const KEY_NOT_PRESSED: u8 = 0x00;
 
 pub const DISPLAY_WIDTH: usize = 64;
 pub const DISPLAY_HEIGHT: usize = 32;
 pub const DISPLAY_SIZE: usize = DISPLAY_WIDTH * DISPLAY_HEIGHT;
-pub const PIXEL_ON: u32 = 0xFFFFFFFF;
+pub const PIXEL_ON: u32 = 0xFFFF_FFFF;
 pub const PIXEL_OFF: u32 = 0;
 
 const FONT_SET_ADDRESS_START: usize = 0x050;
@@ -195,7 +195,6 @@ impl Chip8 {
     }
 
     pub fn tick(&mut self) {
-        // TODO make sound
         if self.sound_timer > 0 {
             self.sound_timer -= 1;
         }
@@ -209,6 +208,10 @@ impl Chip8 {
         let instruction = Self::decode(opcode).ok_or(format!("invald opcode {:X}", opcode))?;
         self.execute(instruction);
         Ok(())
+    }
+
+    pub fn set_keypad(&mut self, keys: [u8; 16]) {
+        self.keypad = keys;
     }
 
     fn fetch(&mut self) -> u16 {
@@ -233,7 +236,7 @@ impl Chip8 {
             0x3000..=0x3FFF => Some(Instruction::SkipNextIfEqualByte(x, kk)),
             0x4000..=0x4FFF => Some(Instruction::SkipNextIfNotEqualByte(x, kk)),
             0x5000..=0x5FFF => {
-                if opcode & 0xF == 0 {
+                if opcode.trailing_zeros() >= 4 {
                     Some(Instruction::SkipNextIfEqualRegister(x, y))
                 } else {
                     None
@@ -256,7 +259,7 @@ impl Chip8 {
                 }
             }
             0x9000..=0x9FFF => {
-                if opcode & 0xF == 0 {
+                if opcode.trailing_zeros() >= 4 {
                     Some(Instruction::SkipNextIfNotEqualRegister(x, y))
                 } else {
                     None
@@ -449,7 +452,7 @@ impl Chip8 {
                             PIXEL_OFF
                         };
                         self.display[get_index(i, j)] ^= pixel_value;
-                        mask = mask >> 1;
+                        mask >>= 1;
                     }
                 }
             }
