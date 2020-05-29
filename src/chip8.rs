@@ -216,6 +216,10 @@ impl Chip8 {
         self.keypad = keys;
     }
 
+    pub fn is_playing_sound(&self) -> bool {
+        self.sound_timer > 0
+    }
+
     fn fetch(&mut self) -> u16 {
         let higher_byte = self.memory[self.program_counter as usize];
         let lower_byte = self.memory[(self.program_counter + 1) as usize];

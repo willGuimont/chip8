@@ -7,6 +7,7 @@ use minifb::{Key, Window, WindowOptions};
 use std::thread;
 use std::time::{Instant, Duration};
 use clap::{Arg, App};
+use rodio::{Sink, Source};
 
 use crate::chip8::{Chip8, DISPLAY_WIDTH, DISPLAY_HEIGHT, NUMBER_OF_KEYS, KEY_NOT_PRESSED, KEY_PRESSED, CHIP_FREQUENCY};
 
@@ -72,7 +73,6 @@ fn get_keys(window: &Window) -> [u8; NUMBER_OF_KEYS] {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // TODO error handling
     let matches = App::new("chip8")
         .version("1.0")
         .author("William Guimont-Martin")
@@ -108,11 +108,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "chip8",
             width,
             height,
-            WindowOptions::default(),
-        )
+            WindowOptions::default(), )
             .unwrap_or_else(|e| {
                 panic!("{}", e);
             });
+        let device = rodio::default_output_device().unwrap();
+        let sink = Sink::new(&device);
+        let source = rodio::source::SineWave::new(440).repeat_infinite();
+        sink.append(source);
+        sink.pause();
 
         // Limit to max ~60 fps update rate
         window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
@@ -121,8 +125,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let keys = get_keys(&window);
             chip.set_keypad(keys);
 
-            // TODO make sound
             chip.tick();
+            if chip.is_playing_sound() {
+                sink.play();
+            } else {
+                sink.pause();
+            }
             let new_time = Instant::now();
             let elaspsed = new_time.duration_since(last_time);
             let num_steps = math::round::floor(elaspsed.as_micros() as f64 / 1_000_000.0 * CHIP_FREQUENCY, 0) as u128;
