@@ -1,5 +1,7 @@
 use rand::prelude::*;
 
+pub const CHIP_FREQUENCY: f64 = 500.0;
+
 const NUMBER_OF_REGISTER: usize = 16;
 
 const MEMORY_SIZE: usize = 0xFFF;

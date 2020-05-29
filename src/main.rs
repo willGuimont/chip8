@@ -1,11 +1,14 @@
 extern crate minifb;
 extern crate clap;
+extern crate math;
 
 use std::fs;
 use minifb::{Key, Window, WindowOptions};
+use std::thread;
+use std::time::{Instant, Duration};
 use clap::{Arg, App};
 
-use crate::chip8::{Chip8, DISPLAY_WIDTH, DISPLAY_HEIGHT, NUMBER_OF_KEYS, KEY_NOT_PRESSED, KEY_PRESSED};
+use crate::chip8::{Chip8, DISPLAY_WIDTH, DISPLAY_HEIGHT, NUMBER_OF_KEYS, KEY_NOT_PRESSED, KEY_PRESSED, CHIP_FREQUENCY};
 
 mod chip8;
 
@@ -113,15 +116,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Limit to max ~60 fps update rate
         window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
-
+        let mut last_time = Instant::now();
         while window.is_open() && !window.is_key_down(Key::Escape) {
             let keys = get_keys(&window);
             chip.set_keypad(keys);
 
             // TODO make sound
             chip.tick();
-            // TODO run multiple steps (according to frequency)
-            chip.step()?;
+            let new_time = Instant::now();
+            let elaspsed = new_time.duration_since(last_time);
+            let num_steps = math::round::floor(elaspsed.as_micros() as f64 / 1_000_000.0 * CHIP_FREQUENCY, 0) as u128;
+            for _ in 0..num_steps {
+                chip.step()?;
+            }
+            last_time = Instant::now();
             let display = chip.get_display();
 
             for i in 0..DISPLAY_WIDTH {
@@ -140,6 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             window
                 .update_with_buffer(&buffer, width, height)
                 .unwrap();
+            thread::sleep(Duration::from_micros(16600));
         }
     }
     Ok(())
