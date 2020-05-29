@@ -21,52 +21,52 @@ fn get_keys(window: &Window) -> [u8; NUMBER_OF_KEYS] {
     let mut keys= [KEY_NOT_PRESSED; NUMBER_OF_KEYS];
 
     if window.is_key_down(Key::Key1) {
-        keys[0] = KEY_PRESSED;
+        keys[0x1] = KEY_PRESSED;
     }
     if window.is_key_down(Key::Key2) {
-        keys[1] = KEY_PRESSED;
+        keys[0x2] = KEY_PRESSED;
     }
     if window.is_key_down(Key::Key3) {
-        keys[2] = KEY_PRESSED;
+        keys[0x3] = KEY_PRESSED;
     }
     if window.is_key_down(Key::Key4) {
-        keys[3] = KEY_PRESSED;
+        keys[0xC] = KEY_PRESSED;
     }
     if window.is_key_down(Key::Q) {
-        keys[4] = KEY_PRESSED;
+        keys[0x4] = KEY_PRESSED;
     }
     if window.is_key_down(Key::W) {
-        keys[5] = KEY_PRESSED;
+        keys[0x5] = KEY_PRESSED;
     }
     if window.is_key_down(Key::E) {
-        keys[6] = KEY_PRESSED;
+        keys[0x6] = KEY_PRESSED;
     }
     if window.is_key_down(Key::R) {
-        keys[7] = KEY_PRESSED;
+        keys[0xD] = KEY_PRESSED;
     }
     if window.is_key_down(Key::A) {
-        keys[8] = KEY_PRESSED;
+        keys[0x7] = KEY_PRESSED;
     }
     if window.is_key_down(Key::S) {
-        keys[9] = KEY_PRESSED;
+        keys[0x8] = KEY_PRESSED;
     }
     if window.is_key_down(Key::D) {
-        keys[10] = KEY_PRESSED;
+        keys[0x9] = KEY_PRESSED;
     }
     if window.is_key_down(Key::F) {
-        keys[11] = KEY_PRESSED;
+        keys[0xE] = KEY_PRESSED;
     }
     if window.is_key_down(Key::Z) {
-        keys[12] = KEY_PRESSED;
+        keys[0xA] = KEY_PRESSED;
     }
     if window.is_key_down(Key::X) {
-        keys[13] = KEY_PRESSED;
+        keys[0x0] = KEY_PRESSED;
     }
     if window.is_key_down(Key::C) {
-        keys[14] = KEY_PRESSED;
+        keys[0xB] = KEY_PRESSED;
     }
     if window.is_key_down(Key::V) {
-        keys[15] = KEY_PRESSED;
+        keys[0xF] = KEY_PRESSED;
     }
 
     keys
@@ -121,6 +121,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Limit to max ~60 fps update rate
         window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
         let mut last_time = Instant::now();
+
         while window.is_open() && !window.is_key_down(Key::Escape) {
             let keys = get_keys(&window);
             chip.set_keypad(keys);
@@ -131,13 +132,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 sink.pause();
             }
-            let new_time = Instant::now();
-            let elaspsed = new_time.duration_since(last_time);
-            let num_steps = math::round::floor(elaspsed.as_micros() as f64 / 1_000_000.0 * CHIP_FREQUENCY, 0) as u128;
-            for _ in 0..num_steps {
-                chip.step()?;
+
+            {
+                let new_time = Instant::now();
+                let elaspsed = new_time.duration_since(last_time);
+                let num_steps = math::round::floor(elaspsed.as_micros() as f64 / 1_000_000.0 * CHIP_FREQUENCY, 0) as u128;
+                for _ in 0..num_steps {
+                    chip.step()?;
+                }
+                last_time = Instant::now();
             }
-            last_time = Instant::now();
+
             let display = chip.get_display();
 
             for i in 0..DISPLAY_WIDTH {

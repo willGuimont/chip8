@@ -49,6 +49,7 @@ const FONT_SET: [u8; FONT_SET_SIZE] = [
  * y   => upper 4 bits of low byte of instruction
  * kk  => lowest byte of instruction
  */
+#[derive(Debug)]
 enum Instruction {
     // 00E0 Clear display
     Clear,
@@ -82,12 +83,12 @@ enum Instruction {
     Sub(usize, usize),
     // 8xy6 CHIP-48: If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2
     // This opcode has multiple possible implementation (it was undocumented in CHIP-8). The CHIP-48 implementation is chosen
-    ShiftRight(usize),
+    ShiftRight(usize, usize),
     // 9xy7 Set Vx = Vy - Vx, set VF = NOT borrow. If Vy > Vx, then VF is set to 1, otherwise 0
     SubFrom(usize, usize),
     // 8xyE If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
     // This opcode has multiple possible implementation (it was undocumented in CHIP-8). The CHIP-48 implementation is chosen
-    ShiftLeft(usize),
+    ShiftLeft(usize, usize),
     // 9xy0 Skip next instruction if Vx != Vy (PC += 2)
     SkipNextIfNotEqualRegister(usize, usize),
     // Annn Set I = nnn
@@ -207,7 +208,7 @@ impl Chip8 {
 
     pub fn step(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let opcode = self.fetch();
-        let instruction = Self::decode(opcode).ok_or(format!("invald opcode {:X}", opcode))?;
+        let instruction = Self::decode(opcode).ok_or(format!("invalid opcode {:X}", opcode))?;
         self.execute(instruction);
         Ok(())
     }
@@ -258,9 +259,9 @@ impl Chip8 {
                     0x3 => Some(Instruction::Xor(x, y)),
                     0x4 => Some(Instruction::AddRegister(x, y)),
                     0x5 => Some(Instruction::Sub(x, y)),
-                    0x6 => Some(Instruction::ShiftRight(x)),
+                    0x6 => Some(Instruction::ShiftRight(x, y)),
                     0x7 => Some(Instruction::SubFrom(x, y)),
-                    0xE => Some(Instruction::ShiftLeft(x)),
+                    0xE => Some(Instruction::ShiftLeft(x, y)),
                     _ => None
                 }
             }
@@ -323,7 +324,7 @@ impl Chip8 {
     fn execute(&mut self, instruction: Instruction) {
         match instruction {
             Instruction::Clear => {
-                self.memory = [0; MEMORY_SIZE];
+                self.display = [0; DISPLAY_SIZE];
             }
             Instruction::Return => {
                 self.program_counter = self.stack[self.stack_pointer];
@@ -393,16 +394,16 @@ impl Chip8 {
 
                 self.registers[x] = x_value.wrapping_sub(y_value);
             }
-            Instruction::ShiftRight(x) => {
-                let x_value = self.registers[x];
+            Instruction::ShiftRight(x, _y) => {
+                let value = self.registers[x];
 
-                self.registers[0xF] = if x_value & 0b1 == 1 {
+                self.registers[0xF] = if value & 0b1 == 1 {
                     1
                 } else {
                     0
                 };
 
-                self.registers[x] = x_value >> 1;
+                self.registers[x] = value >> 1;
             }
             Instruction::SubFrom(x, y) => {
                 let x_value = self.registers[x];
@@ -416,16 +417,16 @@ impl Chip8 {
 
                 self.registers[x] = y_value.wrapping_sub(x_value);
             }
-            Instruction::ShiftLeft(x) => {
-                let x_value = self.registers[x];
+            Instruction::ShiftLeft(x, _y) => {
+                let value = self.registers[x];
 
-                self.registers[0xF] = if x_value & 0x80 > 0 {
+                self.registers[0xF] = if value & 0x80 > 0 {
                     1
                 } else {
                     0
                 };
 
-                self.registers[x] = x_value << 1;
+                self.registers[x] = value << 1;
             }
             Instruction::SkipNextIfNotEqualRegister(x, y) => {
                 if self.registers[x] != self.registers[y] {
@@ -447,6 +448,7 @@ impl Chip8 {
                 let vy = self.registers[y] as usize;
                 let get_index = |i, j| { ((vx + i) % DISPLAY_WIDTH) + ((vy + j) % DISPLAY_HEIGHT) * DISPLAY_WIDTH };
 
+                let mut collided = false;
                 let index = self.index as usize;
                 for j in 0..n as usize {
                     let mut mask = 0x80;
@@ -457,18 +459,29 @@ impl Chip8 {
                         } else {
                             PIXEL_OFF
                         };
+                        let pre = self.display[get_index(i, j)];
                         self.display[get_index(i, j)] ^= pixel_value;
+                        if pre == PIXEL_ON && self.display[get_index(i, j)] == PIXEL_OFF {
+                            collided = true;
+                        }
                         mask >>= 1;
                     }
                 }
+                if collided {
+                    self.registers[0xF] = 1;
+                } else {
+                    self.registers[0xF] = 0;
+                }
             }
             Instruction::SkipIfKeyPressed(x) => {
-                if self.keypad[x] == KEY_PRESSED {
+                let key = self.registers[x] as usize;
+                if self.keypad[key] == KEY_PRESSED {
                     self.program_counter += 2;
                 }
             }
             Instruction::SkipIfNotKeyPressed(x) => {
-                if self.keypad[x] == KEY_NOT_PRESSED {
+                let key = self.registers[x] as usize;
+                if self.keypad[key] == KEY_NOT_PRESSED {
                     self.program_counter += 2;
                 }
             }
@@ -476,7 +489,8 @@ impl Chip8 {
                 self.registers[x] = self.delay_timer;
             }
             Instruction::WaitKeyPress(x) => {
-                if self.keypad[x] == KEY_NOT_PRESSED {
+                let key = self.registers[x] as usize;
+                if self.keypad[key] == KEY_NOT_PRESSED {
                     self.program_counter -= 2;
                 }
             }
