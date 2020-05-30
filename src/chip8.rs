@@ -397,7 +397,7 @@ impl Chip8 {
             Instruction::ShiftRight(x, _y) => {
                 let value = self.registers[x];
 
-                self.registers[0xF] = if value & 0b1 == 1 {
+                self.registers[0xF] = if value & 0b1 > 0 {
                     1
                 } else {
                     0
@@ -467,10 +467,10 @@ impl Chip8 {
                         mask >>= 1;
                     }
                 }
-                if collided {
-                    self.registers[0xF] = 1;
+                self.registers[0xF] = if collided {
+                    1
                 } else {
-                    self.registers[0xF] = 0;
+                    0
                 }
             }
             Instruction::SkipIfKeyPressed(x) => {
@@ -489,8 +489,16 @@ impl Chip8 {
                 self.registers[x] = self.delay_timer;
             }
             Instruction::WaitKeyPress(x) => {
-                let key = self.registers[x] as usize;
-                if self.keypad[key] == KEY_NOT_PRESSED {
+                let mut key_pressed = None;
+                for (k, status) in self.keypad.iter().enumerate() {
+                    if *status == KEY_PRESSED {
+                        key_pressed = Some(k as u8)
+                    }
+                }
+
+                if let Some(k) = key_pressed {
+                    self.registers[x] = k;
+                } else {
                     self.program_counter -= 2;
                 }
             }
