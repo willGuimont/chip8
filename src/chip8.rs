@@ -489,18 +489,14 @@ impl Chip8 {
                 self.registers[x] = self.delay_timer;
             }
             Instruction::WaitKeyPress(x) => {
-                let mut key_pressed = None;
                 for (k, status) in self.keypad.iter().enumerate() {
                     if *status == KEY_PRESSED {
-                        key_pressed = Some(k as u8)
+                        self.registers[x] = k as u8;
+                        return;
                     }
                 }
 
-                if let Some(k) = key_pressed {
-                    self.registers[x] = k;
-                } else {
-                    self.program_counter -= 2;
-                }
+                self.program_counter -= 2;
             }
             Instruction::SetTimer(x) => {
                 self.delay_timer = self.registers[x];
