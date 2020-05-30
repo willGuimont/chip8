@@ -83,12 +83,12 @@ enum Instruction {
     Sub(usize, usize),
     // 8xy6 CHIP-48: If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2
     // This opcode has multiple possible implementation (it was undocumented in CHIP-8). The CHIP-48 implementation is chosen
-    ShiftRight(usize, usize),
+    ShiftRight(usize),
     // 9xy7 Set Vx = Vy - Vx, set VF = NOT borrow. If Vy > Vx, then VF is set to 1, otherwise 0
     SubFrom(usize, usize),
     // 8xyE If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
     // This opcode has multiple possible implementation (it was undocumented in CHIP-8). The CHIP-48 implementation is chosen
-    ShiftLeft(usize, usize),
+    ShiftLeft(usize),
     // 9xy0 Skip next instruction if Vx != Vy (PC += 2)
     SkipNextIfNotEqualRegister(usize, usize),
     // Annn Set I = nnn
@@ -259,9 +259,9 @@ impl Chip8 {
                     0x3 => Some(Instruction::Xor(x, y)),
                     0x4 => Some(Instruction::AddRegister(x, y)),
                     0x5 => Some(Instruction::Sub(x, y)),
-                    0x6 => Some(Instruction::ShiftRight(x, y)),
+                    0x6 => Some(Instruction::ShiftRight(x)),
                     0x7 => Some(Instruction::SubFrom(x, y)),
-                    0xE => Some(Instruction::ShiftLeft(x, y)),
+                    0xE => Some(Instruction::ShiftLeft(x)),
                     _ => None
                 }
             }
@@ -394,7 +394,7 @@ impl Chip8 {
 
                 self.registers[x] = x_value.wrapping_sub(y_value);
             }
-            Instruction::ShiftRight(x, _y) => {
+            Instruction::ShiftRight(x) => {
                 let value = self.registers[x];
 
                 self.registers[0xF] = if value & 0b1 > 0 {
@@ -417,7 +417,7 @@ impl Chip8 {
 
                 self.registers[x] = y_value.wrapping_sub(x_value);
             }
-            Instruction::ShiftLeft(x, _y) => {
+            Instruction::ShiftLeft(x) => {
                 let value = self.registers[x];
 
                 self.registers[0xF] = if value & 0x80 > 0 {

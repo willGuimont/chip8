@@ -18,7 +18,7 @@ fn get_index(i: usize, j: usize, width: usize) -> usize {
 }
 
 fn get_keys(window: &Window) -> [u8; NUMBER_OF_KEYS] {
-    let mut keys= [KEY_NOT_PRESSED; NUMBER_OF_KEYS];
+    let mut keys = [KEY_NOT_PRESSED; NUMBER_OF_KEYS];
 
     if window.is_key_down(Key::Key1) {
         keys[0x1] = KEY_PRESSED;
