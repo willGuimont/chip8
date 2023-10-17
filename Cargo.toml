@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 rand = "0.7.3"
-minifb = "0.16"
+minifb = "0.25"
 clap = "2"
 libmath = "0.2.1"
 rodio = "0.11.0"
